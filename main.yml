@@ -1,0 +1,165 @@
+---
+- hosts: buildhost[0]
+  tasks:
+    - name: clone git
+      git:
+        repo: "https://github.com/mdrobisch/roseguarden"
+        dest: "{{builddir}}"
+        depth: 1
+        update: no
+
+    - name: patch bowerrc
+      patch:
+        src: bower.json.patch
+        dest: "{{builddir}}/client/bower.json"
+
+    - name: docker it
+      docker_container:
+        name: rose
+        image: node:stretch
+#        detach: yes
+        detach: no
+        command: "bash -c 'cd /usr/src/app && npm install bower && export PATH=$PATH:$(npm bin) && bower install && echo $?'"
+        volumes: "{{builddir}}/client:/usr/src/app"
+#        working_dir: /usr/src/app
+        user: node
+        cleanup: yes
+      changed_when: False
+
+    - name: generate archive
+#      archive:
+#        path: "{{builddir}}/client"
+#        dest: "{{builddir}}/client.tar.gz"
+#        format: gzip
+      command: tar -cvzf "{{builddir}}/client.tar.gz" "client"
+      args:
+        chdir: "{{builddir}}"
+        creates: "{{builddir}}/client.tar.gz"
+
+    - name: fetch archive
+      fetch:
+        src: "{{builddir}}/client.tar.gz"
+        dest: "client.tar.gz"
+        flat: yes
+
+- hosts: rosen
+  vars: 
+    targetdir: /srv/rose
+    clientdir: /srv/rose-client
+  tasks:
+    - name: ensure client directory exists
+      file:
+        path: "{{clientdir}}"
+        state: directory
+
+    - name: unpack client archive
+      unarchive:
+        src: "client.tar.gz"
+        dest: "{{clientdir}}"
+
+    - name: install apache webserver for client
+      apt:
+        name: apache2
+        state: present
+
+    - name: configure apache webserver document root
+      replace:
+        regexp: "DocumentRoot /var/www/html"
+        replace: "DocumentRoot {{clientdir}}/client"
+        dest: "/etc/apache2/sites-enabled/000-default.conf"
+      notify: restart apache2
+
+    - name: configure apache webserver access configuration
+      blockinfile:
+        content: |
+          <Directory {{clientdir}}/client>
+                  Options Indexes FollowSymLinks
+                  AllowOverride None
+                  Require all granted
+          </Directory>
+        insertafter: "DocumentRoot"
+        dest: "/etc/apache2/sites-enabled/000-default.conf"
+      notify: restart apache2
+
+    - name: install git
+      apt:
+        name: git
+        state: present
+
+    - name: clone git
+      git:
+        repo: "https://github.com/mdrobisch/roseguarden"
+        dest: "{{targetdir}}"
+        depth: 1
+        update: no
+      register: gitclone
+
+    - name: find pyc files in cloned repo
+      find: 
+        paths: "{{targetdir}}"
+        recurse: yes
+        patterns: "*.pyc"
+      when: gitclone|changed
+      register: pycs
+
+    - name: remove pyc files in cloned repo
+      file: 
+        path: "{{item}}"
+        state: absent
+      with_items: "{{pycs.files|map(attribute='path')|list}}"
+      when: gitclone|changed and pycs.files
+
+    - name: cleanup previous builds of SPI library present in cloned repository
+      file: 
+        path: "{{targetdir}}/server/app/SPI-Py/build"
+        state: absent
+      when: gitclone|changed
+
+    - name: remove existing instance of SPI library
+      file: 
+        path: /usr/local/lib/python2.7/dist-packages/spi.so
+        state: absent
+      when: gitclone|changed
+
+    - name: install python-dev, gcc and libraries
+      apt:
+        name: "{{item}}"
+        state: present
+      with_items: [ python-dev, gcc, libjpeg-dev, zlib1g-dev, python-pip]
+
+    - name: install python modules via apt
+      apt:
+        name: "{{item}}"
+        state: present
+      with_items: [ python-flask, python-flask-bcrypt, python-flask-restful,
+        python-flask-migrate, python-flask-script,
+        python-flask-sqlalchemy, python-flaskext.wtf, python-flask-httpauth,
+        python-configobj, python-jinja2, python-markupsafe, python-dateutil,
+        python-sqlalchemy, python-sqlalchemy-utils, python-wtforms,
+        python-werkzeug, python-aniso8601, python-decorator,
+        python-itsdangerous, python-bcrypt, python-tz, python-six,
+        python-requests ]
+        # libpython2.7-stdlib
+
+    - name: edit requirements.txt
+      replace:
+        dest: "{{targetdir}}/server/requirements.txt"
+        regexp: "=="
+        replace: ">="
+
+    - name: run pip
+      pip:
+        requirements: "{{targetdir}}/server/requirements.txt"
+
+    - name: build SPI lib setup.py
+      command: python setup.py install
+      args:
+        chdir: "{{targetdir}}/server/app/SPI-Py"
+        creates: /usr/local/lib/python2.7/dist-packages/spi.so
+
+    - name: enable autostart for python
+      debug:
+
+  handlers:
+    - name: restart apache2
+      service: name=apache2 state=restarted

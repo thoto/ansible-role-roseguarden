@@ -1,0 +1,13 @@
+diff --git a/client/bower.json b/client/bower.json
+index d4278f6..7506780 100644
+--- a/client/bower.json
++++ b/client/bower.json
+@@ -27,5 +27,8 @@
+     "angular-i18n": "~1.4.7",
+     "angular-chart.js": "~0.8.8",
+     "angular-sanitize": "~1.5.0"
++  },
++  "resolutions": {
++    "angular": "1.6.6"
+   }
+ }
