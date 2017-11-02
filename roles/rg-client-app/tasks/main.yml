@@ -1,0 +1,36 @@
+---
+- name: ensure client directory exists
+  file:
+    path: "{{clientdir}}"
+    state: directory
+
+- name: unpack client archive
+  unarchive:
+    src: "client.tar.gz"
+    dest: "{{clientdir}}"
+
+- name: install apache webserver for client
+  apt:
+    name: apache2
+    state: present
+
+- name: configure apache webserver document root
+  replace:
+    regexp: "DocumentRoot /var/www/html"
+    replace: "DocumentRoot {{clientdir}}/client"
+    dest: "/etc/apache2/sites-enabled/000-default.conf"
+  notify: restart apache2
+
+- name: configure apache webserver access configuration
+  blockinfile:
+    content: |
+          <Directory {{clientdir}}/client>
+                  Options Indexes FollowSymLinks
+                  AllowOverride None
+                  Require all granted
+          </Directory>
+    insertafter: "DocumentRoot"
+    dest: "/etc/apache2/sites-enabled/000-default.conf"
+  notify: restart apache2
+
+

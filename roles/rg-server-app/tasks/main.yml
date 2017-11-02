@@ -1,0 +1,99 @@
+---
+- name: install git
+  apt:
+    name: git
+    state: present
+
+- name: clone git
+  git:
+    repo: "https://github.com/mdrobisch/roseguarden"
+    dest: "{{targetdir}}"
+    depth: 1
+    update: no
+  register: gitclone
+
+- name: find pyc files in cloned repo
+  find:
+    paths: "{{targetdir}}"
+    recurse: yes
+    patterns: "*.pyc"
+  when: gitclone|changed
+  register: pycs
+
+- name: remove pyc files in cloned repo
+  file:
+    path: "{{item}}"
+    state: absent
+  with_items: "{{pycs.files|map(attribute='path')|list}}"
+  when: gitclone|changed and pycs.files
+
+- name: cleanup previous builds of SPI library present in cloned repository
+  file:
+    path: "{{targetdir}}/server/app/SPI-Py/build"
+    state: absent
+  when: gitclone|changed
+
+- name: remove existing instance of SPI library
+  file:
+    path: /usr/local/lib/python2.7/dist-packages/spi.so
+    state: absent
+  when: gitclone|changed
+
+- name: install python-dev, gcc and libraries
+  apt:
+    name: "{{item}}"
+    state: present
+  with_items: [ python-dev, gcc, libjpeg-dev, zlib1g-dev, python-pip]
+
+- name: install python modules via apt
+  apt:
+    name: "{{item}}"
+    state: present
+  with_items: [ python-flask, python-flask-bcrypt, python-flask-restful,
+    python-flask-migrate, python-flask-script,
+    python-flask-sqlalchemy, python-flaskext.wtf, python-flask-httpauth,
+    python-configobj, python-jinja2, python-markupsafe, python-dateutil,
+    python-sqlalchemy, python-sqlalchemy-utils, python-wtforms,
+    python-werkzeug, python-aniso8601, python-decorator,
+    python-itsdangerous, python-bcrypt, python-tz, python-six,
+    python-requests ]
+    # libpython2.7-stdlib
+
+- name: edit requirements.txt
+  replace:
+    dest: "{{targetdir}}/server/requirements.txt"
+    regexp: "=="
+    replace: ">="
+
+- name: run pip
+  pip:
+    requirements: "{{targetdir}}/server/requirements.txt"
+
+- name: build SPI lib setup.py
+  command: python setup.py install
+  args:
+    chdir: "{{targetdir}}/server/app/SPI-Py"
+    creates: /usr/local/lib/python2.7/dist-packages/spi.so
+
+- name: template master configuration
+  template:
+    src: config.master.ini.j2
+    dest: /srv/rose/server/config.ini
+  when: masternode is defined and masternode
+
+- name: template slave configuration
+  template:
+    src: config.slave.ini.j2
+    dest: /srv/rose/server/config.ini
+  when: not ( masternode is defined and masternode )
+
+- name: initialize database
+  command: python roseGuarden.py create_db
+  args:
+    chdir: "{{targetdir}}/server/"
+    creates: "{{targetdir}}/server/database/roseGuarden.db"
+
+- name: enable autostart for python
+  debug: msg="FIXME"
+  changed_when: True
+

@@ -1,0 +1,46 @@
+[NODE]
+NODE_NAME = '{{inventory_hostname}}'
+NODE_MASTER = True                          # master node enable
+NODE_SYNC_ON_STARTUP = True                 # do sychronization of nodes on startup
+NODE_SYNC_CYCLIC = True                     # enable (True) or disable (False) cyclic syncing
+                                            # if enabled, the sync process starts every n minutes
+                                            # if disabled, the sync process starts one time a day
+NODE_SYNC_CYCLE = 60                        # sync cycle in minutes for cyclic syncing
+NODE_DOOR_AVAILABLE = True                  # Is a door available for the node
+NODE_LOG_MERGE = 15                         # merge the same log entries in the interval of the given number in minutes
+
+[FLASK]
+DEBUG = False
+
+[SECURITY]
+RFID_GLOBAL_PASSWORD = '00-00-00-00-00-00' 	# global sector key in byte format (00 to FF) seperated with "-", this option will fail
+SYNC_MASTER_DEFAULT_PASSWORD = '{{syncsecret}}'
+
+[MAIL]
+{% if mailserver is defined -%}
+MAIL_SERVER = '{{mailserver}}'
+MAIL_PORT = 465
+MAIL_USE_TLS = False
+MAIL_USE_SSL = True
+MAIL_USERNAME = '{{mailuser}}'     # your email-address
+MAIL_PASSWORD = '{{mailpassword}}'      # the email-password
+{%- endif %}
+
+[CLEANUP]
+CLEANUP_EANBLE = True                       # enable (True) or disable (False) database cleanup
+CLEANUP_ENABLE = True                       # enable (True) or disable (False) database cleanup
+CLEANUP_THRESHOLD = 30                      # days after log-data get deleted from the database
+
+[STATISTICS]
+STATISTICS_ENABLE = True
+
+[BACKUP]
+{% if backup_ftp_server is defined -%}
+BACKUP_ENABLE_FTP = True                    # store the backup locally and to the ftp server
+BACKUP_FTP_SERVER = 'ftp.server.com'
+BACKUP_FTP_USER = 'johndoe'
+BACKUP_FTP_PASSWORD = 'password'
+BACKUP_FTP_PATH = '/absolute/path/'
+{% else -%}
+BACKUP_ENABLE_FTP = False
+{%- endif %}

@@ -1,0 +1,42 @@
+---
+- name: clone git
+  git:
+    repo: "https://github.com/mdrobisch/roseguarden"
+    dest: "{{builddir}}"
+    depth: 1
+    update: no
+
+- name: patch bowerrc
+  patch:
+    src: bower.json.patch
+    dest: "{{builddir}}/client/bower.json"
+
+- name: docker it
+  docker_container:
+    name: rose
+    image: node:stretch
+#        detach: yes
+    detach: no
+    command: "bash -c 'cd /usr/src/app && npm install bower && export PATH=$PATH:$(npm bin) && bower install && echo $?'"
+    volumes: "{{builddir}}/client:/usr/src/app"
+#        working_dir: /usr/src/app
+    user: node
+    cleanup: yes
+  changed_when: False
+
+- name: generate archive
+#      archive:
+#        path: "{{builddir}}/client"
+#        dest: "{{builddir}}/client.tar.gz"
+#        format: gzip
+  command: tar -cvzf "{{builddir}}/client.tar.gz" "client"
+  args:
+    chdir: "{{builddir}}"
+    creates: "{{builddir}}/client.tar.gz"
+
+- name: fetch archive
+  fetch:
+    src: "{{builddir}}/client.tar.gz"
+    dest: "client.tar.gz"
+    flat: yes
+

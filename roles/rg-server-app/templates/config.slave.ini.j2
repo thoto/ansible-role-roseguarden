@@ -1,0 +1,22 @@
+[NODE]
+NODE_NAME = '{{inventory_hostname}}'
+NODE_MASTER = False                         # master node enable
+NODE_DOOR_AVAILABLE = True                  # Is a door available for the node
+NODE_LOG_MERGE = 15                         # merge the same log entries in the interval of the given number in minutes
+
+[FLASK]
+DEBUG = False
+
+[SECURITY]
+RFID_GLOBAL_PASSWORD = '00-00-00-00-00-00' 	# global sector key in byte format (00 to FF) seperated with "-", this option will fail
+SYNC_MASTER_DEFAULT_PASSWORD = '{{syncsecret}}'
+
+[BACKUP]
+BACKUP_ENABLE_FTP = False                   # store the backup locally only
+
+[STATISTICS]
+STATISTICS_ENABLE = False
+
+[CLEANUP]
+CLEANUP_EANBLE = False                       # enable (True) or disable (False) database cleanup
+CLEANUP_ENABLE = False                       # enable (True) or disable (False) database cleanup

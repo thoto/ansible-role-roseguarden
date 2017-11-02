@@ -1,4 +1,5 @@
 [buildhost]
 localhost	ansible_connection=local builddir=/tmp/rose
 [rosen]
-172.17.0.2	ansible_user=root
+172.17.0.2	ansible_user=root masternode=True
+172.17.0.3	ansible_user=root
