@@ -94,6 +94,15 @@
     creates: "{{targetdir}}/server/database/roseGuarden.db"
 
 - name: enable autostart for python
-  debug: msg="FIXME"
+  lineinfile:
+    line: "cd {{targetdir}}/server/ && nohup python roseGuarden.py start &"
+    insertbefore: "exit 0"
+    dest: /etc/rc.local
   changed_when: True
 
+- name: enable SPI on boot
+  replace:
+    dest: "/boot/config.txt"
+    regexp: "#dtparam=spi=on"
+    replace: "dtparam=spi=on"
+  notify: rebooted

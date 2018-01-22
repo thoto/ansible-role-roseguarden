@@ -4,9 +4,15 @@
     - rg-client-build
 
 - hosts: rosen
+  vars_files:
+    - vars/rose.yml
   vars: 
     targetdir: /srv/rose
     clientdir: /srv/rose-client
   roles:
     - { role: rg-client-app, when: masternode is defined and masternode }
     - rg-server-app
+  tasks:
+    - apt:
+        name: vim
+        state: present

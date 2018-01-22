@@ -1,0 +1,14 @@
+- name: reboot host
+  command: /sbin/reboot
+#  async: 0
+#  poll: 0
+  listen: rebooted
+
+- name: wait for host to return
+  local_action:
+    module: wait_for
+    host: "{{ inventory_hostname }}"
+    search_regex: "OpenSSH"
+    port: 22
+    timeout: 300
+  listen: rebooted
